@@ -9,6 +9,15 @@ from natsort import natsorted
 # 阿里云OSS
 import oss2
 
+access_key_id = os.getenv("OSS_ACCESS_KEY_ID")
+access_key_secret = os.getenv("OSS_ACCESS_KEY_SECRET")
+endpoint = 'oss-cn-beijing.aliyuncs.com'  # 例如：'oss-cn-hangzhou.aliyuncs.com'
+bucket_name = 'handwrite-math'
+
+# 创建 OSS 连接
+auth = oss2.Auth(access_key_id, access_key_secret)
+bucket = oss2.Bucket(auth, endpoint, bucket_name)
+
 # ======================================================================================================================
 @st.cache_data
 def get_anno(an_filepath):
