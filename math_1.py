@@ -9,8 +9,9 @@ from natsort import natsorted
 # 阿里云OSS
 import oss2
 
-access_key_id = os.getenv("OSS_ACCESS_KEY_ID")
-access_key_secret = os.getenv("OSS_ACCESS_KEY_SECRET")
+# 读取 Streamlit Secrets
+access_key_id = st.secrets["OSS_ACCESS_KEY_ID"]
+access_key_secret = st.secrets["OSS_ACCESS_KEY_SECRET"]
 
 if access_key_id is None or access_key_secret is None:
     print("环境变量未正确设置，请检查！")
