@@ -6,9 +6,8 @@ from natsort import natsorted
 # ======================================================================================================================
 
 
-# 设置应用程序的标题
-# st.set_page_config(page_title='图片and标注')
-
+# 阿里云OSS
+import oss2
 
 # ======================================================================================================================
 @st.cache_data
@@ -71,7 +70,61 @@ def load_data_v1(folder_path):
     ####
 
     return data_list
+
+@st.cache_data(ttl=3600)  # 缓存 1 小时
+def load_data_v2(folder_path):
+    data_list = []
+    ext_dict = {'.jpg', '.png', '.jpeg'}  # 直接使用 set 提高查找效率
+
+    # 1️⃣ 确保是 OSS 目录（math/set_111/ 这种格式）
+    if not folder_path.startswith(("math/", "dataset/")):
+        return load_data_v1(folder_path)  # 走本地文件逻辑
+
+    # 2️⃣ 处理 OSS 逻辑 - 分页获取所有对象
+    image_files = []
+    txt_files = {}
+
+    next_marker = ""
+    while True:
+        object_list = bucket.list_objects(prefix=folder_path, marker=next_marker, max_keys=1000)
+
+        for obj in object_list.object_list:
+            file_key = obj.key  # OSS 内部路径，例如 "math/set_111/train_001.jpg"
+            file_name = os.path.basename(file_key)
+
+            if file_name.endswith(tuple(ext_dict)):
+                image_files.append((file_key, file_name))
+            elif file_name.endswith('.txt'):
+                txt_files[file_name] = file_key  # 记录标注文件路径
+
+        # 继续翻页
+        if object_list.is_truncated:
+            next_marker = object_list.next_marker
+        else:
+            break  # 结束循环
+
+    # 3️⃣ 处理图片和标注文件匹配
+    for file_key, image_name in image_files:
+        txt_name = os.path.splitext(image_name)[0] + '.txt'
+        annotation_text = "⚠️ 无标注信息"
+
+        if txt_name in txt_files:
+            try:
+                response = bucket.get_object(txt_files[txt_name])  # 直接用 OSS 内部路径读取
+                annotation_text = response.read().decode('utf-8')
+            except Exception as e:
+                annotation_text = f"❌ 读取标注失败: {str(e)}"
+
+        # ✅ 确保 OSS 地址拼接正确
+        file_url = f"https://{bucket_name}.{endpoint}/{file_key}"
+
+        data_list.append([(folder_path, os.path.splitext(image_name)[0], os.path.splitext(image_name)[1]), annotation_text])
+
+    print(f"✅ 加载完成，共 {len(data_list)} 个文件")
+    return data_list
+
 # ======================================================================================================================
+
 @st.fragment
 def copy_files_v1(loc, name_s, ext, dest_folder):
     if not os.path.exists(dest_folder):
@@ -244,14 +297,15 @@ def main():
     folder_path = st.sidebar.text_input('文件夹路径：', placeholder='')
 
     st.sidebar.info('请在上面文本框输入有效路径，并按ENTER键。')
+    data = load_data_v2(folder_path)
     if '' == folder_path:
         return
     ####
 
-    if not os.path.exists(folder_path):
-        st.sidebar.error('文件夹路径不存在！')
-        return
-    ####
+    # if not os.path.exists(folder_path):
+    #     st.sidebar.error('文件夹路径不存在！')
+    #     return
+    # ####
 
     folder_path = os.path.abspath(folder_path)
 
@@ -267,7 +321,8 @@ def main():
     ]
 
     # 加载数据
-    data = load_data_v1(folder_path)
+    # data = load_data_v1(folder_path)
+    # data = load_data_v2(folder_path)
 
     if 0 >= len(data):
         st.warning('当前文件夹下无有效数据！')
@@ -289,6 +344,13 @@ def main():
         (loc, name_s, ext), latex_text = data[idx]
 
         image_path = loc + '/' + name_s + ext
+        image_path = os.path.normpath(image_path)  # 规范化路径
+        # print(image_path)
+        # oss_url = f"https://{bucket_name}.{endpoint}/{image_path.replace(os.sep, '/')}"
+        # print(oss_url)
+
+        # 构造 OSS 对象路径
+        oss_object_key = image_path.replace(os.sep, '/')
 
         with st.container():
             st.caption(f'图片路径：{image_path}')
@@ -297,7 +359,7 @@ def main():
             with col2:
                 # 图片展示
                 # st.image(image_path, caption=f'图片名称：{name_s}{ext}', use_container_width=True)
-                st.image(image_path, use_container_width=True)
+                st.image(oss_url, use_container_width=True)
 
             # 调用编辑 LaTeX 并保存的功能，传递 idx 作为唯一标识符
             edit_latex_and_save(latex_text, loc, name_s, idx)
