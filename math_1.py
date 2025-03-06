@@ -364,6 +364,7 @@ def main():
 
         # 构造 OSS 对象路径
         oss_object_key = image_path.replace(os.sep, '/')
+        url = bucket.sign_url('GET', oss_object_key, 3600)
 
         with st.container():
             st.caption(f'图片路径：{image_path}')
@@ -372,7 +373,7 @@ def main():
             with col2:
                 # 图片展示
                 # st.image(image_path, caption=f'图片名称：{name_s}{ext}', use_container_width=True)
-                st.image(oss_url, use_container_width=True)
+                st.image(url , use_container_width=True)
 
             # 调用编辑 LaTeX 并保存的功能，传递 idx 作为唯一标识符
             edit_latex_and_save(latex_text, loc, name_s, idx)
