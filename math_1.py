@@ -11,6 +11,9 @@ import oss2
 
 access_key_id = os.getenv("OSS_ACCESS_KEY_ID")
 access_key_secret = os.getenv("OSS_ACCESS_KEY_SECRET")
+
+if access_key_id is None or access_key_secret is None:
+    print("环境变量未正确设置，请检查！")
 endpoint = 'oss-cn-beijing.aliyuncs.com'  # 例如：'oss-cn-hangzhou.aliyuncs.com'
 bucket_name = 'handwrite-math'
 
