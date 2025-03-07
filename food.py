@@ -268,6 +268,17 @@ def show_diet_plan():
         with st.container():
             cols = st.columns(3)
 
+            st.markdown("""
+                <style>
+                    .custom-card h3 {
+                        color: #ff69b4; /* 亮粉色 */
+                    }
+                    .custom-card p {
+                        color: #ff1493; /* 深粉色 */
+                    }
+                </style>
+            """, unsafe_allow_html=True)
+
             # 早餐卡片
             with cols[0]:
                 st.markdown(f"""
